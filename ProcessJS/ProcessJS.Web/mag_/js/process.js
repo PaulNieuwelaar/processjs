@@ -27,8 +27,11 @@
             alert("Error executing workflow");
         });
 
-// Call a Dialog
-    Process.callDialog("C50B3473-F346-429F-8AC7-17CCB1CA45BC", "contact", Xrm.Page.data.entity.getId());
+    // Call a Dialog
+    Process.callDialog("C50B3473-F346-429F-8AC7-17CCB1CA45BC", "contact", Xrm.Page.data.entity.getId(), 
+        function () { 
+            Xrm.Page.data.refresh(); 
+        });
 */
 
 var Process = Process || {};
@@ -223,78 +226,76 @@ Process.callWorkflow = function (workflowId, recordId, successCallback, errorCal
 
 // Pops open the specified dialog process for a particular record
 // dialogId, entityName, and recordId are required
-Process.callDialog = function (dialogId, entityName, recordId, url) {
-    var dialogUrl = "/cs/dialog/rundialog.aspx?DialogId=%7b" + dialogId + "%7d&EntityName=" + entityName + "&ObjectId=" + recordId;
-    var width = 600;
-    var height = 500;
+// callback fires even if the dialog is closed/cancelled
+Process.callDialog = function (dialogId, entityName, recordId, callback, url) {
+    tryShowDialog("/cs/dialog/rundialog.aspx?DialogId=%7b" + dialogId + "%7d&EntityName=" + entityName + "&ObjectId=" + recordId, 600, 400, callback, url);
 
-    function callback() {
-        // Refresh the form or grid when the dialog is closed
-        if (Xrm && Xrm.Page && Xrm.Page.data && Xrm.Page.data.refresh) {
-            // Refresh the form
-            Xrm.Page.data.refresh();
-        }
-        else {
-            // Refresh the grid view (unsupported)
-            $("#crmGrid").each(function () {
-                if (this.control && this.control.refresh) {
-                    this.control.refresh();
+    // Function copied from Alert.js https://alertjs.codeplex.com
+    function tryShowDialog(url, width, height, callback, baseUrl) {
+        width = width || Alert._dialogWidth;
+        height = height || Alert._dialogHeight;
+
+        var isOpened = false;
+
+        try {
+            // Web (IE, Chrome, FireFox)
+            if (Mscrm && Mscrm.CrmDialog && Mscrm.CrmUri && Mscrm.CrmUri.create) {
+                // Use CRM light-box (unsupported)
+                var crmUrl = Mscrm.CrmUri.create(url);
+                var dialogwindow = new Mscrm.CrmDialog(crmUrl, window, width, height);
+
+                // Allows for opening non-webresources (e.g. dialog processes) - CRM messes up when it's not a web resource (unsupported)
+                if (!crmUrl.get_isWebResource()) {
+                    crmUrl.get_isWebResource = function () { return true; }
                 }
-            });
-        }
-    }
 
-    var isOpened = false;
-    try {
-        // Web (IE, Chrome, FireFox)
-        if (Mscrm && Mscrm.CrmDialog && Mscrm.CrmUri && Mscrm.CrmUri.create) {
-            // Use CRM light-box (unsupported)
-            var crmUrl = Mscrm.CrmUri.create(dialogUrl);
-            var dialogwindow = new Mscrm.CrmDialog(crmUrl, window, width, height);
+                // Open the lightbox
+                dialogwindow.show();
+                isOpened = true;
 
-            // Allows for opening non-webresources (e.g. dialog processes) - CRM messes up when it's not a web resource (unsupported)
-            if (!crmUrl.get_isWebResource()) {
-                crmUrl.get_isWebResource = function () { return true; }
-            }
-
-            // Open the lightbox
-            dialogwindow.show();
-            isOpened = true;
-
-            // Make sure when the dialog is closed, the callback is fired
-            // This part's all pretty unsupported, hence the try-catches
-            try {
-                // Get the lightbox iframe (unsupported)
-                var $frame = parent.$("#InlineDialog_Iframe");
-                $frame.load(function () {
+                // Make sure when the dialog is closed, the callback is fired
+                // This part's all pretty unsupported, hence the try-catches
+                // If you can avoid using a callback, best not to use one
+                if (callback) {
                     try {
-                        // Override the CRM closeWindow function (unsupported)
-                        var frameDoc = $frame[0].contentWindow;
-                        var closeEvt = frameDoc.closeWindow; // Save the OOTB closeWindow function for later
-                        frameDoc.closeWindow = function () {
-                            // Bypasses onunload event on dialogs to prevent "are you sure..." (unsupported)
-                            try { frameDoc.Mscrm.GlobalVars.$B = false; } catch (e) { }
+                        // Get the lightbox iframe (unsupported)
+                        var $frame = parent.$("#InlineDialog_Iframe");
+                        $frame.load(function () {
+                            try {
+                                // Override the CRM closeWindow function (unsupported)
+                                var frameDoc = $frame[0].contentWindow;
+                                var closeEvt = frameDoc.closeWindow; // OOTB close function
+                                frameDoc.closeWindow = function () {
+                                    // Bypasses onunload event on dialogs to prevent "are you sure..." (unsupported)
+                                    try { frameDoc.Mscrm.GlobalVars.$B = false; } catch (e) { }
 
-                            // Fire the callback and close
-                            callback();
-                            try { closeEvt(); } catch (e) { }
-                        }
+                                    // Fire the callback and close
+                                    callback();
+                                    try { closeEvt(); } catch (e) { }
+                                }
+                            } catch (e) { }
+                        });
                     } catch (e) { }
-                });
-            } catch (e) { }
-        }
-    } catch (e) { }
+                }
+            }
+        } catch (e) { }
 
-    try {
-        // Outlook
-        if (!isOpened && window.showModalDialog) {
-            // If lightbox fails, use window.showModalDialog
-            baseUrl = baseUrl || Xrm.Page.context.getClientUrl();
-            var params = "dialogWidth:" + width + "px; dialogHeight:" + height + "px; status:no; scroll:no; help:no; resizable:yes";
+        try {
+            // Outlook
+            if (!isOpened && window.showModalDialog) {
+                // If lightbox fails, use window.showModalDialog
+                baseUrl = baseUrl || Xrm.Page.context.getClientUrl();
+                var params = "dialogWidth:" + width + "px; dialogHeight:" + height + "px; status:no; scroll:no; help:no; resizable:yes";
 
-            window.showModalDialog(baseUrl + dialogUrl, window, params);
+                window.showModalDialog(baseUrl + url, window, params);
+                if (callback) {
+                    callback();
+                }
 
-            callback();
-        }
-    } catch (e) { }
+                isOpened = true;
+            }
+        } catch (e) { }
+
+        return isOpened;
+    }
 }
