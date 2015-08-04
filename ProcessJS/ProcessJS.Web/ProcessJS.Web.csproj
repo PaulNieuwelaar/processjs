@@ -71,7 +71,6 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="mag_\js\process.js" />
-    <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Properties\AssemblyInfo.cs" />
