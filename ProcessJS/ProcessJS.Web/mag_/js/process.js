@@ -239,6 +239,7 @@ Process.callDialog = function (dialogId, entityName, recordId, callback, url) {
 
         try {
             // Web (IE, Chrome, FireFox)
+            var Mscrm = Mscrm && Mscrm.CrmDialog && Mscrm.CrmUri && Mscrm.CrmUri.create ? Mscrm : parent.Mscrm;
             if (Mscrm && Mscrm.CrmDialog && Mscrm.CrmUri && Mscrm.CrmUri.create) {
                 // Use CRM light-box (unsupported)
                 var crmUrl = Mscrm.CrmUri.create(url);
@@ -260,13 +261,14 @@ Process.callDialog = function (dialogId, entityName, recordId, callback, url) {
                     try {
                         // Get the lightbox iframe (unsupported)
                         var $frame = parent.$("#InlineDialog_Iframe");
+                        if ($frame.length == 0) { $frame = parent.parent.$("#InlineDialog_Iframe"); }
                         $frame.load(function () {
                             try {
                                 // Override the CRM closeWindow function (unsupported)
                                 var frameDoc = $frame[0].contentWindow;
                                 var closeEvt = frameDoc.closeWindow; // OOTB close function
                                 frameDoc.closeWindow = function () {
-                                    // Bypasses onunload event on dialogs to prevent "are you sure..." (unsupported)
+                                    // Bypasses onunload event on dialogs to prevent "are you sure..." (unsupported - doesn't work with 2015 SP1)
                                     try { frameDoc.Mscrm.GlobalVars.$B = false; } catch (e) { }
 
                                     // Fire the callback and close
