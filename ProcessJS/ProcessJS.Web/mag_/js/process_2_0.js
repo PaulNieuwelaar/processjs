@@ -1,26 +1,30 @@
 ﻿/*
     // Call an Action
-    Process.callAction("mag_Retrieve",
-        [{
-            key: "Target",
-            type: Process.Type.EntityReference,
-            value: new Process.EntityReference("account", Xrm.Page.data.entity.getId())
-        },
-        {
-            key: "ColumnSet",
-            type: Process.Type.String,
-            value: "name, statuscode"
-        }],
-        function (params) {
-            // Success
-            alert("Name = " + params["Entity"].get("name") + "\n" +
-                  "Status = " + params["Entity"].formattedValues["statuscode"]);
-        },
-        function (e) {
-            // Error
-            alert(e);
+Process.callAction("mag_Retrieve",
+    [{
+        key: "Target",
+        type: Process.Type.EntityReference,
+        value: new Process.EntityReference("account", Xrm.Page.data.entity.getId())
+    },
+    {
+        key: "ColumnSet",
+        type: Process.Type.String,
+        value: "name, statuscode"
+    }],
+    function (params) {
+        // Success
+        alert("Name = " + params["Entity"].get("name") + "\n" +
+                "Status = " + params["Entity"].formattedValues["statuscode"]);
+    },
+    function (e, t) {
+        // Error
+        alert(e);
+
+        // Write the trace log to the dev console
+        if (window.console && console.error) {
+            console.error(e + "\n" + t);
         }
-    );
+    });
 
     // Call a Workflow
     Process.callWorkflow("4AB26754-3F2F-4B1D-9EC7-F8932331567A", Xrm.Page.data.entity.getId(),
