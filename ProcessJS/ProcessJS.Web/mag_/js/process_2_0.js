@@ -276,7 +276,7 @@ Process._callActionBase = function (requestXml, successCallback, errorCallback, 
                     // Action completed successfully - get output params
                     var responseParams = Process._getChildNodes(resultsNode, "a:KeyValuePairOfstringanyType");
 
-                    var outputParams = [];
+                    var outputParams = {};
                     for (i = 0; i < responseParams.length; i++) {
                         var attributeName = Process._getNodeTextValue(responseParams[i].childNodes[0]);
                         var attributeValue = Process._getValue(responseParams[i].childNodes[1]);
@@ -312,10 +312,14 @@ Process._callActionBase = function (requestXml, successCallback, errorCallback, 
             else {
                 // Error has occured, action failed
                 if (errorCallback) {
-                    var error = null;
-                    try { error = req.responseXML.getElementsByTagName("Message")[0].firstChild.nodeValue; } catch (e) { }
-                    if (error == null) { error = "Error executing Action. Check input parameters or contact your CRM Administrator"; }
-                    errorCallback(error);
+                    var message = null;
+                    var traceText = null;
+                    try {
+                        message = Process._getNodeTextValueNotNull(req.responseXML.getElementsByTagName("Message"));
+                        traceText = Process._getNodeTextValueNotNull(req.responseXML.getElementsByTagName("TraceText"));
+                    } catch (e) { }
+                    if (message == null) { message = "Error executing Action. Check input parameters or contact your CRM Administrator"; }
+                    errorCallback(message, traceText);
                 }
             }
         }
@@ -342,6 +346,19 @@ Process._getChildNodes = function (node, childNodesName) {
     return childNodes;
 }
 
+// Gets the first not null value from a collection of nodes
+Process._getNodeTextValueNotNull = function (nodes) {
+    var value = "";
+
+    for (var i = 0; i < nodes.length; i++) {
+        if (value === "") {
+            value = Process._getNodeTextValue(nodes[i]);
+        }
+    }
+
+    return value;
+}
+
 // Gets the string value of the XML node
 Process._getNodeTextValue = function (node) {
     var textNode = node.firstChild;
@@ -360,68 +377,71 @@ Process._getValue = function (node) {
     if (node != null) {
         type = node.getAttribute("i:type") || node.getAttribute("type");
 
-        // Get the part after the ':' (since Chrome doesn't have the ':')
-        var valueType = type.substring(type.indexOf(":") + 1).toLowerCase();
+        // If the parameter/attribute is null, there won't be a type either
+        if (type != null) {
+            // Get the part after the ':' (since Chrome doesn't have the ':')
+            var valueType = type.substring(type.indexOf(":") + 1).toLowerCase();
 
-        if (valueType == "entityreference") {
-            // Gets the lookup object
-            var attrValueIdNode = node.childNodes[0];
-            var attrValueEntityNode = node.childNodes[2];
-            var attrValueNameNode = node.childNodes[3];
+            if (valueType == "entityreference") {
+                // Gets the lookup object
+                var attrValueIdNode = node.childNodes[0];
+                var attrValueEntityNode = node.childNodes[2];
+                var attrValueNameNode = node.childNodes[3];
 
-            var lookupId = Process._getNodeTextValue(attrValueIdNode);
-            var lookupName = Process._getNodeTextValue(attrValueNameNode);
-            var lookupEntity = Process._getNodeTextValue(attrValueEntityNode);
+                var lookupId = Process._getNodeTextValue(attrValueIdNode);
+                var lookupName = Process._getNodeTextValue(attrValueNameNode);
+                var lookupEntity = Process._getNodeTextValue(attrValueEntityNode);
 
-            value = new Process.EntityReference(lookupEntity, lookupId, lookupName);
-        }
-        else if (valueType == "entity") {
-            // Gets the entity data, and all attributes
-            value = Process._getEntityData(node);
-        }
-        else if (valueType == "entitycollection") {
-            // Loop through each entity, returns each entity, and all attributes
-            var entitiesNode = Process._getChildNodes(node, "a:Entities")[0];
-            var entityNodes = Process._getChildNodes(entitiesNode, "a:Entity");
+                value = new Process.EntityReference(lookupEntity, lookupId, lookupName);
+            }
+            else if (valueType == "entity") {
+                // Gets the entity data, and all attributes
+                value = Process._getEntityData(node);
+            }
+            else if (valueType == "entitycollection") {
+                // Loop through each entity, returns each entity, and all attributes
+                var entitiesNode = Process._getChildNodes(node, "a:Entities")[0];
+                var entityNodes = Process._getChildNodes(entitiesNode, "a:Entity");
 
-            value = [];
-            if (entityNodes != null && entityNodes.length > 0) {
-                for (var i = 0; i < entityNodes.length; i++) {
-                    value.push(Process._getEntityData(entityNodes[i]));
+                value = [];
+                if (entityNodes != null && entityNodes.length > 0) {
+                    for (var i = 0; i < entityNodes.length; i++) {
+                        value.push(Process._getEntityData(entityNodes[i]));
+                    }
                 }
             }
-        }
-        else if (valueType == "aliasedvalue") {
-            // Gets the actual data type of the aliased value
-            // Key for these is "alias.fieldname"
-            var aliasedValue = Process._getValue(Process._getChildNodes(node, "a:Value")[0]);
-            if (aliasedValue != null) {
-                value = aliasedValue.value;
-                type = aliasedValue.type;
+            else if (valueType == "aliasedvalue") {
+                // Gets the actual data type of the aliased value
+                // Key for these is "alias.fieldname"
+                var aliasedValue = Process._getValue(Process._getChildNodes(node, "a:Value")[0]);
+                if (aliasedValue != null) {
+                    value = aliasedValue.value;
+                    type = aliasedValue.type;
+                }
             }
-        }
-        else {
-            // Standard fields like string, int, date, money, optionset, float, bool, decimal
-            // Output will be string, even for number fields etc
-            var stringValue = Process._getNodeTextValue(node);
+            else {
+                // Standard fields like string, int, date, money, optionset, float, bool, decimal
+                // Output will be string, even for number fields etc
+                var stringValue = Process._getNodeTextValue(node);
 
-            if (stringValue != null) {
-                switch (valueType) {
-                    case "datetime":
-                        value = new Date(stringValue);
-                        break;
-                    case "int":
-                    case "money":
-                    case "optionsetvalue":
-                    case "double": // float
-                    case "decimal":
-                        value = Number(stringValue);
-                        break;
-                    case "boolean":
-                        value = stringValue.toLowerCase() === "true";
-                        break;
-                    default:
-                        value = stringValue;
+                if (stringValue != null) {
+                    switch (valueType) {
+                        case "datetime":
+                            value = new Date(stringValue);
+                            break;
+                        case "int":
+                        case "money":
+                        case "optionsetvalue":
+                        case "double": // float
+                        case "decimal":
+                            value = Number(stringValue);
+                            break;
+                        case "boolean":
+                            value = stringValue.toLowerCase() === "true";
+                            break;
+                        default:
+                            value = stringValue;
+                    }
                 }
             }
         }
@@ -580,8 +600,8 @@ Process._htmlEncode = function (s) {
 
 Process.Entity = function (logicalName, id, attributes) {
     this.logicalName = logicalName || "";
-    this.attributes = attributes || [];
-    this.formattedValues = [];
+    this.attributes = attributes || {};
+    this.formattedValues = {};
     this.id = id || Process._emptyGuid;
 }
 
