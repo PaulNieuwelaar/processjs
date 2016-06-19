@@ -294,8 +294,8 @@ Process._callActionBase = function (requestXml, successCallback, errorCallback, 
                             OptionSet, int, decimal, float, etc = 1 (JavaScript number)
                             guid = string
                             EntityReference = { id: "guid", name: "name", entityType: "account" }
-                            Entity = { logicalName: "account", id: "guid", attributes: [], formattedValues: [] }
-                            EntityCollection = [{ logicalName: "account", id: "guid", attributes: [], formattedValues: [] }]
+                            Entity = { logicalName: "account", id: "guid", attributes: {}, formattedValues: {} }
+                            EntityCollection = [{ logicalName: "account", id: "guid", attributes: {}, formattedValues: {} }]
     
                         Attributes for entity accessed like: entity.attributes["new_fieldname"].value
                         For entityreference: entity.attributes["new_fieldname"].value.id
