@@ -1,6 +1,6 @@
 ﻿/*
     // Call an Action
-Process.callAction("mag_Retrieve",
+    Process.callAction("mag_Retrieve",
     [{
         key: "Target",
         type: Process.Type.EntityReference,
@@ -14,7 +14,7 @@ Process.callAction("mag_Retrieve",
     function (params) {
         // Success
         alert("Name = " + params["Entity"].get("name") + "\n" +
-                "Status = " + params["Entity"].formattedValues["statuscode"]);
+              "Status = " + params["Entity"].formattedValues["statuscode"]);
     },
     function (e, t) {
         // Error
@@ -183,7 +183,7 @@ Process.callWorkflow = function (workflowId, recordId, successCallback, errorCal
 Process.callDialog = function (dialogId, entityName, recordId, callback, url) {
     tryShowDialog("/cs/dialog/rundialog.aspx?DialogId=%7b" + dialogId + "%7d&EntityName=" + entityName + "&ObjectId=" + recordId, 600, 400, callback, url);
 
-    // Function copied from Alert.js https://alertjs.codeplex.com
+    // Function copied from Alert.js v1.0 https://alertjs.codeplex.com
     function tryShowDialog(url, width, height, callback, baseUrl) {
         width = width || Alert._dialogWidth;
         height = height || Alert._dialogHeight;
@@ -282,8 +282,11 @@ Process._callActionBase = function (requestXml, successCallback, errorCallback, 
 
                     var outputParams = {};
                     for (i = 0; i < responseParams.length; i++) {
-                        var attributeName = Process._getNodeTextValue(responseParams[i].childNodes[0]);
-                        var attributeValue = Process._getValue(responseParams[i].childNodes[1]);
+                        var attrNameNode = Process._getChildNode(responseParams[i], "b:key");
+                        var attrValueNode = Process._getChildNode(responseParams[i], "b:value");
+
+                        var attributeName = Process._getNodeTextValue(attrNameNode);
+                        var attributeValue = Process._getValue(attrValueNode);
 
                         // v1.0 - Deprecated method using key/value pair and standard array
                         //outputParams.push({ key: attributeName, value: attributeValue.value });
@@ -332,7 +335,7 @@ Process._callActionBase = function (requestXml, successCallback, errorCallback, 
     req.send(requestXml);
 }
 
-// Get only the immediate child nodes, otherwise entitycollections etc mess it up
+// Get only the immediate child nodes for a specific tag, otherwise entitycollections etc mess it up
 Process._getChildNodes = function (node, childNodesName) {
     var childNodes = [];
 
@@ -350,6 +353,14 @@ Process._getChildNodes = function (node, childNodesName) {
     return childNodes;
 }
 
+// Get a single child node for a specific tag
+Process._getChildNode = function (node, childNodeName) {
+    var nodes = Process._getChildNodes(node, childNodeName);
+
+    if (nodes != null && nodes.length > 0) { return nodes[0]; }
+    else { return null; }
+}
+
 // Gets the first not null value from a collection of nodes
 Process._getNodeTextValueNotNull = function (nodes) {
     var value = "";
@@ -365,9 +376,11 @@ Process._getNodeTextValueNotNull = function (nodes) {
 
 // Gets the string value of the XML node
 Process._getNodeTextValue = function (node) {
-    var textNode = node.firstChild;
-    if (textNode != null) {
-        return textNode.textContent || textNode.nodeValue || textNode.data || textNode.text;
+    if (node != null) {
+        var textNode = node.firstChild;
+        if (textNode != null) {
+            return textNode.textContent || textNode.nodeValue || textNode.data || textNode.text;
+        }
     }
 
     return "";
@@ -388,9 +401,9 @@ Process._getValue = function (node) {
 
             if (valueType == "entityreference") {
                 // Gets the lookup object
-                var attrValueIdNode = node.childNodes[0];
-                var attrValueEntityNode = node.childNodes[2];
-                var attrValueNameNode = node.childNodes[3];
+                var attrValueIdNode = Process._getChildNode(node, "a:Id");
+                var attrValueEntityNode = Process._getChildNode(node, "a:LogicalName");
+                var attrValueNameNode = Process._getChildNode(node, "a:Name");
 
                 var lookupId = Process._getNodeTextValue(attrValueIdNode);
                 var lookupName = Process._getNodeTextValue(attrValueNameNode);
@@ -404,7 +417,7 @@ Process._getValue = function (node) {
             }
             else if (valueType == "entitycollection") {
                 // Loop through each entity, returns each entity, and all attributes
-                var entitiesNode = Process._getChildNodes(node, "a:Entities")[0];
+                var entitiesNode = Process._getChildNode(node, "a:Entities");
                 var entityNodes = Process._getChildNodes(entitiesNode, "a:Entity");
 
                 value = [];
@@ -417,7 +430,7 @@ Process._getValue = function (node) {
             else if (valueType == "aliasedvalue") {
                 // Gets the actual data type of the aliased value
                 // Key for these is "alias.fieldname"
-                var aliasedValue = Process._getValue(Process._getChildNodes(node, "a:Value")[0]);
+                var aliasedValue = Process._getValue(Process._getChildNode(node, "a:Value"));
                 if (aliasedValue != null) {
                     value = aliasedValue.value;
                     type = aliasedValue.type;
@@ -457,10 +470,10 @@ Process._getValue = function (node) {
 Process._getEntityData = function (entityNode) {
     var value = null;
 
-    var entityAttrsNode = Process._getChildNodes(entityNode, "a:Attributes")[0];
-    var entityIdNode = Process._getChildNodes(entityNode, "a:Id")[0];
-    var entityLogicalNameNode = Process._getChildNodes(entityNode, "a:LogicalName")[0];
-    var entityFormattedValuesNode = Process._getChildNodes(entityNode, "a:FormattedValues")[0];
+    var entityAttrsNode = Process._getChildNode(entityNode, "a:Attributes");
+    var entityIdNode = Process._getChildNode(entityNode, "a:Id");
+    var entityLogicalNameNode = Process._getChildNode(entityNode, "a:LogicalName");
+    var entityFormattedValuesNode = Process._getChildNode(entityNode, "a:FormattedValues");
 
     var entityLogicalName = Process._getNodeTextValue(entityLogicalNameNode);
     var entityId = Process._getNodeTextValue(entityIdNode);
@@ -471,8 +484,12 @@ Process._getEntityData = function (entityNode) {
     // Attribute values accessed via entity.attributes["new_fieldname"]
     if (entityAttrs != null && entityAttrs.length > 0) {
         for (var i = 0; i < entityAttrs.length; i++) {
-            var attributeName = Process._getNodeTextValue(entityAttrs[i].childNodes[0]);
-            var attributeValue = Process._getValue(entityAttrs[i].childNodes[1]);
+
+            var attrNameNode = Process._getChildNode(entityAttrs[i], "b:key")
+            var attrValueNode = Process._getChildNode(entityAttrs[i], "b:value");
+
+            var attributeName = Process._getNodeTextValue(attrNameNode);
+            var attributeValue = Process._getValue(attrValueNode);
 
             value.attributes[attributeName] = attributeValue;
         }
@@ -482,8 +499,13 @@ Process._getEntityData = function (entityNode) {
     for (var j = 0; j < entityFormattedValuesNode.childNodes.length; j++) {
         var foNode = entityFormattedValuesNode.childNodes[j];
 
-        var key = Process._getNodeTextValue(foNode.firstChild);
-        value.formattedValues[key] = Process._getNodeTextValue(foNode.childNodes[1]);
+        var fNameNode = Process._getChildNode(foNode, "b:key")
+        var fValueNode = Process._getChildNode(foNode, "b:value");
+
+        var fName = Process._getNodeTextValue(fNameNode);
+        var fValue = Process._getNodeTextValue(fValueNode);
+
+        value.formattedValues[fName] = fValue;
     }
 
     return value;
