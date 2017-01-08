@@ -1,6 +1,6 @@
 ﻿/*
     // Call an Action
-    Process.callAction("mag_Retrieve",
+Process.callAction("mag_Retrieve",
     [{
         key: "Target",
         type: Process.Type.EntityReference,
@@ -14,7 +14,7 @@
     function (params) {
         // Success
         alert("Name = " + params["Entity"].get("name") + "\n" +
-              "Status = " + params["Entity"].formattedValues["statuscode"]);
+                "Status = " + params["Entity"].formattedValues["statuscode"]);
     },
     function (e, t) {
         // Error
@@ -377,10 +377,10 @@ Process._getNodeTextValueNotNull = function (nodes) {
 // Gets the string value of the XML node
 Process._getNodeTextValue = function (node) {
     if (node != null) {
-        var textNode = node.firstChild;
-        if (textNode != null) {
-            return textNode.textContent || textNode.nodeValue || textNode.data || textNode.text;
-        }
+    var textNode = node.firstChild;
+    if (textNode != null) {
+        return textNode.textContent || textNode.nodeValue || textNode.data || textNode.text;
+    }
     }
 
     return "";
@@ -648,6 +648,6 @@ Process.EntityReference = function (entityType, id, name) {
 }
 
 Process.Attribute = function (value, type) {
-    this.value = value || null;
+    this.value = value != undefined ? value : null;
     this.type = type || "";
 }
