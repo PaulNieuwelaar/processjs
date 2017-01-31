@@ -1,4 +1,6 @@
-﻿/*
+﻿// Process.js v2.0 - Copyright Paul Nieuwelaar Magnetism 2016
+
+/*
     // Call an Action
     Process.callAction("mag_Retrieve",
     [{
