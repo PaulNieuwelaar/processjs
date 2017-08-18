@@ -1,5 +1,5 @@
 # Process.js - CRM 2013-D365 Call Actions and Workflows from JavaScript
-[![download](https://user-images.githubusercontent.com/14048382/27844360-c7ea9670-6174-11e7-8658-80d356c1ba8f.png)](https://github.com/PaulNieuwelaar/processjs/raw/master/ProcessJS_2_0_2_0.zip) (v2.0) [<img align="right" src="https://user-images.githubusercontent.com/14048382/29433676-4eb13ea6-83f4-11e7-8c07-eca514b1b197.png"/>](https://github.com/PaulNieuwelaar/processjs/wiki/Documentation)
+[![download](https://user-images.githubusercontent.com/14048382/27844360-c7ea9670-6174-11e7-8658-80d356c1ba8f.png)](https://github.com/PaulNieuwelaar/processjs/files/1233246/ProcessJS_2_0_2_0.zip) (v2.0) [<img align="right" src="https://user-images.githubusercontent.com/14048382/29433676-4eb13ea6-83f4-11e7-8c07-eca514b1b197.png"/>](https://github.com/PaulNieuwelaar/processjs/wiki/Documentation)
 
 ## Overview
 This simple JavaScript library allows you to easily call workflows, dialogs, and actions in CRM from forms, views, web resources, or anywhere that supports JavaScript. This solution works in CRM 2013, CRM 2016, and everything in between, including CRM Online and CRM 2016 Update 1.0. (Also in my opinion easier to use and better than Web Api is currently).
