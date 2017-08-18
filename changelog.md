@@ -1,4 +1,4 @@
-# v2.0
+## v2.0 (stable)
 This release includes major enhancements to the callAction function, including completely changing the outputParams format to be accessible directly from the object like outputParams["Param1"] to get the value, rather than having to loop through the key/values.
 
 If you're upgrading from v1.0 or v1.1:
