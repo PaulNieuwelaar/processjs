@@ -14,7 +14,7 @@ For completeness, I've also included a function for calling dialogs, which simpl
 
 Make sure to add a reference to the process.js code library on your form or ribbon.
 
-Check out the [Documentation](https://github.com/PaulNieuwelaar/alertjs/wiki/Documentation) for more detailed usage information.
+Check out the [Documentation](https://github.com/PaulNieuwelaar/processjs/wiki/Documentation) for more detailed usage information.
 
 ## Call Action
 Calls the specified action and returns the response from the action asynchronously. Useful when needing to run C# code from web resources or command bar buttons when only JavaScript is available. 
