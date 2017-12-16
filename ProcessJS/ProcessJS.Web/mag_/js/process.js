@@ -1,4 +1,5 @@
-﻿// Process.js v2.0 - Copyright Paul Nieuwelaar Magnetism 2016
+// Process.js v2.0 - Copyright Paul Nieuwelaar Magnetism 2016
+// Download the latest version from https://github.com/PaulNieuwelaar/processjs
 
 /*
     // Call an Action
