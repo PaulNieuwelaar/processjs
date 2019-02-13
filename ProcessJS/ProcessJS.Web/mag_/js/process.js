@@ -29,6 +29,20 @@
         }
     });
 
+    // Call an Action (Sync)
+    var actionResult = 
+        Process.callAction("mag_Retrieve",
+        [{
+            key: "Target",
+            type: Process.Type.EntityReference,
+            value: new Process.EntityReference("account", Xrm.Page.data.entity.getId())
+        },
+        {
+            key: "ColumnSet",
+            type: Process.Type.String,
+            value: "name, statuscode"
+        }],null,null,null,false);
+
     // Call a Workflow
     Process.callWorkflow("4AB26754-3F2F-4B1D-9EC7-F8932331567A", Xrm.Page.data.entity.getId(),
         function () {
@@ -68,7 +82,7 @@ Process.Type = {
 // errorCallback: Function accepting 1 argument, which is the string error message. Can be null.
 // Unless the Action is global, you must specify a 'Target' input parameter as EntityReference
 // actionName is required
-Process.callAction = function (actionName, inputParams, successCallback, errorCallback, url) {
+Process.callAction = function (actionName, inputParams, successCallback, errorCallback, url, async) {
     var ns = {
         "": "http://schemas.microsoft.com/xrm/2011/Contracts/Services",
         ":s": "http://schemas.xmlsoap.org/soap/envelope/",
@@ -95,9 +109,9 @@ Process.callAction = function (actionName, inputParams, successCallback, errorCa
     }
 
     requestXml += ">" +
-          "<s:Body>" +
-            "<Execute>" +
-              "<request>";
+        "<s:Body>" +
+        "<Execute>" +
+        "<request>";
 
     if (inputParams != null && inputParams.length > 0) {
         requestXml += "<a:Parameters>";
@@ -118,13 +132,14 @@ Process.callAction = function (actionName, inputParams, successCallback, errorCa
     }
 
     requestXml += "<a:RequestId i:nil='true' />" +
-                "<a:RequestName>" + actionName + "</a:RequestName>" +
-              "</request>" +
-            "</Execute>" +
-          "</s:Body>" +
+        "<a:RequestName>" + actionName + "</a:RequestName>" +
+        "</request>" +
+        "</Execute>" +
+        "</s:Body>" +
         "</s:Envelope>";
 
-    Process._callActionBase(requestXml, successCallback, errorCallback, url);
+    var result = Process._callActionBase(requestXml, successCallback, errorCallback, url, async);
+    if (async == false) return result;
 }
 
 // Runs the specified workflow for a particular record
@@ -136,24 +151,24 @@ Process.callWorkflow = function (workflowId, recordId, successCallback, errorCal
     }
 
     var request = "<s:Envelope xmlns:s='http://schemas.xmlsoap.org/soap/envelope/'>" +
-          "<s:Body>" +
-            "<Execute xmlns='http://schemas.microsoft.com/xrm/2011/Contracts/Services' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>" +
-              "<request i:type='b:ExecuteWorkflowRequest' xmlns:a='http://schemas.microsoft.com/xrm/2011/Contracts' xmlns:b='http://schemas.microsoft.com/crm/2011/Contracts'>" +
-                "<a:Parameters xmlns:c='http://schemas.datacontract.org/2004/07/System.Collections.Generic'>" +
-                  "<a:KeyValuePairOfstringanyType>" +
-                    "<c:key>EntityId</c:key>" +
-                    "<c:value i:type='d:guid' xmlns:d='http://schemas.microsoft.com/2003/10/Serialization/'>" + recordId + "</c:value>" +
-                  "</a:KeyValuePairOfstringanyType>" +
-                  "<a:KeyValuePairOfstringanyType>" +
-                    "<c:key>WorkflowId</c:key>" +
-                    "<c:value i:type='d:guid' xmlns:d='http://schemas.microsoft.com/2003/10/Serialization/'>" + workflowId + "</c:value>" +
-                  "</a:KeyValuePairOfstringanyType>" +
-                "</a:Parameters>" +
-                "<a:RequestId i:nil='true' />" +
-                "<a:RequestName>ExecuteWorkflow</a:RequestName>" +
-              "</request>" +
-            "</Execute>" +
-          "</s:Body>" +
+        "<s:Body>" +
+        "<Execute xmlns='http://schemas.microsoft.com/xrm/2011/Contracts/Services' xmlns:i='http://www.w3.org/2001/XMLSchema-instance'>" +
+        "<request i:type='b:ExecuteWorkflowRequest' xmlns:a='http://schemas.microsoft.com/xrm/2011/Contracts' xmlns:b='http://schemas.microsoft.com/crm/2011/Contracts'>" +
+        "<a:Parameters xmlns:c='http://schemas.datacontract.org/2004/07/System.Collections.Generic'>" +
+        "<a:KeyValuePairOfstringanyType>" +
+        "<c:key>EntityId</c:key>" +
+        "<c:value i:type='d:guid' xmlns:d='http://schemas.microsoft.com/2003/10/Serialization/'>" + recordId + "</c:value>" +
+        "</a:KeyValuePairOfstringanyType>" +
+        "<a:KeyValuePairOfstringanyType>" +
+        "<c:key>WorkflowId</c:key>" +
+        "<c:value i:type='d:guid' xmlns:d='http://schemas.microsoft.com/2003/10/Serialization/'>" + workflowId + "</c:value>" +
+        "</a:KeyValuePairOfstringanyType>" +
+        "</a:Parameters>" +
+        "<a:RequestId i:nil='true' />" +
+        "<a:RequestName>ExecuteWorkflow</a:RequestName>" +
+        "</request>" +
+        "</Execute>" +
+        "</s:Body>" +
         "</s:Envelope>";
 
     var req = new XMLHttpRequest();
@@ -261,13 +276,15 @@ Process.callDialog = function (dialogId, entityName, recordId, callback, url) {
 Process._emptyGuid = "00000000-0000-0000-0000-000000000000";
 
 // This can be used to execute custom requests if needed - useful for me testing the SOAP :)
-Process._callActionBase = function (requestXml, successCallback, errorCallback, url) {
+Process._callActionBase = function (requestXml, successCallback, errorCallback, url, async) {
+    var result = null;
     if (url == null) {
         url = Xrm.Page.context.getClientUrl();
     }
 
     var req = new XMLHttpRequest();
-    req.open("POST", url + "/XRMServices/2011/Organization.svc/web", true);
+    if (async != false) async = true;
+    req.open("POST", url + "/XRMServices/2011/Organization.svc/web", async);
     req.setRequestHeader("Accept", "application/xml, text/xml, */*");
     req.setRequestHeader("Content-Type", "text/xml; charset=utf-8");
     req.setRequestHeader("SOAPAction", "http://schemas.microsoft.com/xrm/2011/Contracts/Services/IOrganizationService/Execute");
@@ -276,7 +293,7 @@ Process._callActionBase = function (requestXml, successCallback, errorCallback, 
         if (req.readyState == 4) {
             if (req.status == 200) {
                 // If there's no successCallback we don't need to check the outputParams
-                if (successCallback) {
+                if (successCallback || async == false) {
                     // Yucky but don't want to risk there being multiple 'Results' nodes or something
                     var resultsNode = req.responseXML.childNodes[0].childNodes[0].childNodes[0].childNodes[0].childNodes[1]; // <a:Results>
 
@@ -316,7 +333,12 @@ Process._callActionBase = function (requestXml, successCallback, errorCallback, 
                     }
 
                     // Make sure the callback accepts exactly 1 argument - use dynamic function if you want more
-                    successCallback(outputParams);
+                    if (async == false) {
+                        result = outputParams;
+                    }
+
+                    if (async)
+                        successCallback(outputParams);
                 }
             }
             else {
@@ -336,6 +358,7 @@ Process._callActionBase = function (requestXml, successCallback, errorCallback, 
     };
 
     req.send(requestXml);
+    return result;
 }
 
 // Get only the immediate child nodes for a specific tag, otherwise entitycollections etc mess it up
@@ -530,8 +553,8 @@ Process._getXmlValue = function (key, dataType, value) {
             break;
         case Process.Type.EntityReference:
             xmlValue = "<a:Id>" + (value.id || "") + "</a:Id>" +
-                  "<a:LogicalName>" + (value.entityType || "") + "</a:LogicalName>" +
-                  "<a:Name i:nil='true' />";
+                "<a:LogicalName>" + (value.entityType || "") + "</a:LogicalName>" +
+                "<a:Name i:nil='true' />";
             break;
         case Process.Type.OptionSet:
         case Process.Type.Money:
@@ -573,8 +596,8 @@ Process._getXmlValue = function (key, dataType, value) {
     }
 
     xml = "<a:KeyValuePairOfstringanyType>" +
-            "<b:key>" + key + "</b:key>" +
-            "<b:value i:type='" + dataType + "'" + extraNamespace;
+        "<b:key>" + key + "</b:key>" +
+        "<b:value i:type='" + dataType + "'" + extraNamespace;
 
     // nulls crash if you have a non-self-closing tag
     if (xmlValue === null || xmlValue === "") {
